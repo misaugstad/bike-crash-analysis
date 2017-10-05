@@ -54,13 +54,18 @@ crash.data <- read.csv("data/NYPD_Motor_Vehicle_Collisions.csv",
 crash.data$TIME <- as.POSIXct(crash.data$TIME, format = "%H:%M")
 crash.data$DATE <- as.Date(crash.data$DATE, format = "%m/%d/%Y")
 
+# Add a biker casualty column that includes both injuries and deaths of cyclists
+crash.data.lon <-
+  crash.data %>%
+  mutate(CYCLIST.CASUALTIES = NUMBER.OF.CYCLIST.INJURED + NUMBER.OF.CYCLIST.KILLED)
+
 crash.data %>%
   head() %>%
   select(1:3,5:7,15:16) %>%
   kable("html") %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 
-sapply(crash.data,class) %>% head() %>% kable("html")
+sapply(crash.data, class) %>% head() %>% kable("html")
 ```
 
 # Patterns of Missingness
@@ -76,60 +81,18 @@ aggr(crash.data, col=c('darkgreen', 'tomato', 'skyblue'),
      cex.axis=.5, gap=2, ylab=c("Histogram of missing data","Pattern"))
 ```
 
-# Tidy the Data
-```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
-crash.data %>% head() %>% select(1:3,5:7,15:16) %>% kable("html") %>%  kable_styling(bootstrap_options = c("striped", "hover"))
-```
-
-* To process and visualize data a 'tidy' form of the data is preferred
-* Clearly column headers are values, not variable names.
-* For presenting data in  tables the 'wide' or 'untidy' is usually preferable.
-
-```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
-crash.data -> crash.data.lon
-crash.data.lon$incidence = as.numeric(crash.data.lon$NUMBER.OF.CYCLIST.INJURED+crash.data.lon$NUMBER.OF.CYCLIST.KILLED) 
-
-crash.data.lon %>% head(12) %>% kable("html") %>% kable_styling(bootstrap_options = c("striped", "hover"))
-
-```
-
-* Note that there is a price to pay for this new arrangement. For example here the state names are now repeated for every week and year. So the size of the object increases substantially.
-
-```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
-dim(crash.data)
-dim(crash.data.lon)
-prod(dim(crash.data))
-prod(dim(crash.data.lon))
-```
-
-* The 'wide' table has `prod(dim(crash.data) )` elements, while the 'lon' version has `prod(dim(crash.data.lon) )`.
-
-```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
-object.size(crash.data)
-object.size(crash.data.lon)
-
-( as.numeric(object.size(crash.data.lon)) - as.numeric(object.size(crash.data) ))/as.numeric(object.size(crash.data))
-
-```
-
-
 The NYC visualization aggregates incidence by year.
 
 ```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
-pol <- crash.data.lon %>% group_by(BOROUGH, DATE) %>%  dplyr::summarise( c=sum(incidence, na.rm=T))
+pol <- crash.data.lon %>% group_by(BOROUGH, DATE) %>%  dplyr::summarise( c=sum(CYCLIST.CASUALTIES, na.rm=T))
 pol %>% head() %>% kable("html") %>%  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
-Now we have a tidy dataset. i.e.:
-
-* Each variable forms a column.
-* Each observation forms a row.
-* Each type of observational unit forms a table.
 
 
 # Filtering the data
 For this I will use the _fields_ library
 ```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9,fig.height=9}
-output <- filter(crash.data.lon,incidence>=1 , LATITUDE != "NA")
+output <- filter(crash.data.lon,CYCLIST.CASUALTIES>=1 , LATITUDE != "NA")
 
 output %>% head(27) %>% select(1:2,5:6,30) %>% kable("html") %>%   kable_styling(bootstrap_options = c("striped", "hover"))
 
@@ -138,7 +101,7 @@ output %>% head(27) %>% select(1:2,5:6,30) %>% kable("html") %>%   kable_styling
 
 # Combine all the data within one day
 ```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9,fig.height=9}
-output%>% select(1:2,5:6,30) %>%  group_by(DATE) %>% summarise( c=sum(incidence, na.rm=T)) %>%  kable("html") %>%   kable_styling(bootstrap_options = c("striped", "hover"))
+output%>% select(1:2,5:6,30) %>%  group_by(DATE) %>% summarise( c=sum(CYCLIST.CASUALTIES, na.rm=T)) %>%  kable("html") %>%   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 
@@ -146,14 +109,14 @@ output%>% select(1:2,5:6,30) %>%  group_by(DATE) %>% summarise( c=sum(incidence,
 
 Select and generate data for visualization
 ```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9,fig.height=9}
-Foutput <-  output%>% select(1:2,5:6,30) %>%  group_by(DATE) %>% summarise( c=sum(incidence, na.rm=T))
+Foutput <-  output%>% select(1:2,5:6,30) %>%  group_by(DATE) %>% summarise( c=sum(CYCLIST.CASUALTIES, na.rm=T))
 ```
 
 
 Using ggplot2 to visualize the seasonal pattern of bicycle related car crash data in NYC.
 
 ```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9,fig.height=9}
-Foutput <- output  %>%  select(1:2,5:6,30) %>%  group_by(DATE)  %>%  summarise( c=sum(incidence, na.rm=T))
+Foutput <- output  %>%  select(1:2,5:6,30) %>%  group_by(DATE)  %>%  summarise( c=sum(CYCLIST.CASUALTIES, na.rm=T))
 
 ggplot(data=Foutput, aes(x=as.Date(Foutput$DATE, format="%m/%d/%Y"), y=Foutput$c)) + geom_point() +
   geom_smooth(method = "auto", color= "red", linetype=1) +
@@ -163,7 +126,7 @@ ggplot(data=Foutput, aes(x=as.Date(Foutput$DATE, format="%m/%d/%Y"), y=Foutput$c
   scale_x_date(date_breaks = "6 months", date_labels = "%b - %y")
 
 
-# timeOutput <- output  %>%  select(1:2,5:6,30)  %>%  summarise( c=sum(incidence, na.rm=T))
+# timeOutput <- output  %>%  select(1:2,5:6,30)  %>%  summarise( c=sum(CYCLIST.CASUALTIES, na.rm=T))
 # ggplot(data=Foutput, aes(x=as.Date(Foutput$TIME), y=Foutput$c)) + geom_point() +
 #   geom_smooth(method = "auto", color= "red", linetype=1) +
 #   labs(title="# of Accidents Involving Bicycles Per Day",
