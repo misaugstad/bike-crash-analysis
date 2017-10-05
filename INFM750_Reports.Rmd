@@ -35,42 +35,30 @@ library(kableExtra)
 You can get the car crash data by going to the  [NYC OpenData](https://opendata.cityofnewyork.us/), do not need register, search "Car crash data", you can get the NYC car crash data.  There is then an option to download a csv file.
 
 ## Reading the Data in R
-```{r, echo=TRUE,warning=FALSE,message=FALSE}
-library(tidyverse)
-setwd("~/Dropbox/bike_analysis")
-polio <- read.csv("data/NYPD_Motor_Vehicle_Collisions.csv", skip=0, header=T)
-
-polio %>% head() %>% select(1:3,5:7,15:16) %>% kable("html") %>% kable_styling(bootstrap_options = c("striped", "hover"))
-
-sapply(polio,class)  %>% head()  %>% kable("html")
-```
-
-## Reading Missing Values Correctly
 
 * Information on incidence in states is read as factors. Factors are categorical variables not numerical. This "coercion" was caused by the presence of characters that denote missing values.
 
 > factors are variables in R which take on a limited number of different values; such variables are often refered to as categorical variables. One of the most important uses of factors is in statistical modeling; since categorical variables enter into statistical models differently than continuous variables, storing data as factors insures that the modeling functions will treat such data correctly. [Factors in R](https://www.stat.berkeley.edu/classes/s133/factors.html)
-
-```{r, echo=TRUE,warning=FALSE,message=FALSE}
-levels(polio$DATE)   
-```
-
-In principle, factors allow character values to stored efficiently, since each uniquely occurring value is stored only once, while the data  is actually stored as a vector of integers. _read.table_ will automatically convert character variables into factors unless explicitly stopped from doing it specifying the as.is= T in the argument.
-
-```{r, echo=TRUE,warning=FALSE,message=FALSE}
-knitr::opts_chunk$set(cache=TRUE)
-table(polio$DATE) #%>% as.data.frame() %>%  kable("html")
-```
-
-
-
 ```{r, echo=TRUE,warning=FALSE,message=FALSE}
 library(tidyverse)
-polio <- read.csv("data/NYPD_Motor_Vehicle_Collisions.csv",skip=0,header=T,na.strings="-")
+setwd("~/Dropbox/bike_analysis")
+classes <- c("factor", "factor", "factor", "factor", "numeric", "numeric", replicate(4, "factor"),
+             replicate(8, "numeric"), replicate(5, "factor"), "numeric", replicate(5, "factor"))
+polio <- read.csv("data/NYPD_Motor_Vehicle_Collisions.csv",
+                  skip=0, header=T, na.strings=c("-", ""), colClasses = classes)
 
-polio %>% head() %>% select(1:3,5:7,15:16) %>% kable("html") %>% kable_styling(bootstrap_options = c("striped", "hover"))
+# Fixed date and time columns to have appropriate data types
+polio$TIME <- as.POSIXct(polio$TIME, format = "%H:%M")
+polio$DATE <- as.Date(polio$DATE, format = "%m/%d/%Y")
+
+polio %>%
+  head() %>%
+  select(1:3,5:7,15:16) %>%
+  kable("html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+sapply(polio,class) %>% head() %>% kable("html")
 ```
-
 
 # Patterns of Missingness
 
