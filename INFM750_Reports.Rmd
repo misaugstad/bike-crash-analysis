@@ -42,22 +42,22 @@ You can get the car crash data by going to the  [NYC OpenData](https://opendata.
 ```{r, echo=TRUE,warning=FALSE,message=FALSE}
 library(tidyverse)
 setwd("~/Dropbox/bike_analysis")
-classes <- c("factor", "factor", "factor", "factor", "numeric", "numeric", replicate(4, "factor"),
-             replicate(8, "numeric"), replicate(5, "factor"), "numeric", replicate(5, "factor"))
-polio <- read.csv("data/NYPD_Motor_Vehicle_Collisions.csv",
+classes <- c(replicate(4, "factor"), "numeric", "numeric", replicate(4, "factor"),
+            replicate(8, "numeric"), replicate(5, "factor"), "numeric", replicate(5, "factor"))
+crash.data <- read.csv("data/NYPD_Motor_Vehicle_Collisions.csv",
                   skip=0, header=T, na.strings=c("-", ""), colClasses = classes)
 
 # Fixed date and time columns to have appropriate data types
-polio$TIME <- as.POSIXct(polio$TIME, format = "%H:%M")
-polio$DATE <- as.Date(polio$DATE, format = "%m/%d/%Y")
+crash.data$TIME <- as.POSIXct(crash.data$TIME, format = "%H:%M")
+crash.data$DATE <- as.Date(crash.data$DATE, format = "%m/%d/%Y")
 
-polio %>%
+crash.data %>%
   head() %>%
   select(1:3,5:7,15:16) %>%
   kable("html") %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 
-sapply(polio,class) %>% head() %>% kable("html")
+sapply(crash.data,class) %>% head() %>% kable("html")
 ```
 
 # Patterns of Missingness
@@ -66,12 +66,12 @@ sapply(polio,class) %>% head() %>% kable("html")
 ```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
 knitr::opts_chunk$set(cache=TRUE)
 library(VIM)
-aggr(polio, col=c('darkgreen','tomato'), numbers=TRUE, sortVars=TRUE, labels=names(polio), cex.axis=.5, gap=2, ylab=c("Histogram of missing data","Pattern"))
+aggr(crash.data, col=c('darkgreen','tomato'), numbers=TRUE, sortVars=TRUE, labels=names(crash.data), cex.axis=.5, gap=2, ylab=c("Histogram of missing data","Pattern"))
 ```
 
 # Tidy the Data
 ```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
-polio %>% head() %>% select(1:3,5:7,15:16) %>% kable("html") %>%  kable_styling(bootstrap_options = c("striped", "hover"))
+crash.data %>% head() %>% select(1:3,5:7,15:16) %>% kable("html") %>%  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 * To process and visualize data a 'tidy' form of the data is preferred
@@ -79,29 +79,29 @@ polio %>% head() %>% select(1:3,5:7,15:16) %>% kable("html") %>%  kable_styling(
 * For presenting data in  tables the 'wide' or 'untidy' is usually preferable.
 
 ```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
-polio -> polio.lon
-polio.lon$incidence = as.numeric(polio.lon$NUMBER.OF.CYCLIST.INJURED+polio.lon$NUMBER.OF.CYCLIST.KILLED) 
+crash.data -> crash.data.lon
+crash.data.lon$incidence = as.numeric(crash.data.lon$NUMBER.OF.CYCLIST.INJURED+crash.data.lon$NUMBER.OF.CYCLIST.KILLED) 
 
-polio.lon %>% head(12) %>% kable("html") %>% kable_styling(bootstrap_options = c("striped", "hover"))
+crash.data.lon %>% head(12) %>% kable("html") %>% kable_styling(bootstrap_options = c("striped", "hover"))
 
 ```
 
 * Note that there is a price to pay for this new arrangement. For example here the state names are now repeated for every week and year. So the size of the object increases substantially.
 
 ```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
-dim(polio)
-dim(polio.lon)
-prod(dim(polio))
-prod(dim(polio.lon))
+dim(crash.data)
+dim(crash.data.lon)
+prod(dim(crash.data))
+prod(dim(crash.data.lon))
 ```
 
-* The 'wide' table has `prod(dim(polio) )` elements, while the 'lon' version has `prod(dim(polio.lon) )`.
+* The 'wide' table has `prod(dim(crash.data) )` elements, while the 'lon' version has `prod(dim(crash.data.lon) )`.
 
 ```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
-object.size(polio)
-object.size(polio.lon)
+object.size(crash.data)
+object.size(crash.data.lon)
 
-( as.numeric(object.size(polio.lon)) - as.numeric(object.size(polio) ))/as.numeric(object.size(polio))
+( as.numeric(object.size(crash.data.lon)) - as.numeric(object.size(crash.data) ))/as.numeric(object.size(crash.data))
 
 ```
 
@@ -109,7 +109,7 @@ object.size(polio.lon)
 The NYC visualization aggregates incidence by year.
 
 ```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
-pol <- polio.lon %>% group_by(BOROUGH, DATE) %>%  dplyr::summarise( c=sum(incidence, na.rm=T))
+pol <- crash.data.lon %>% group_by(BOROUGH, DATE) %>%  dplyr::summarise( c=sum(incidence, na.rm=T))
 pol %>% head() %>% kable("html") %>%  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 Now we have a tidy dataset. i.e.:
@@ -122,7 +122,7 @@ Now we have a tidy dataset. i.e.:
 # Filtering the data
 For this I will use the _fields_ library
 ```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9,fig.height=9}
-output <- filter(polio.lon,incidence>=1 , LATITUDE != "NA")
+output <- filter(crash.data.lon,incidence>=1 , LATITUDE != "NA")
 
 output %>% head(27) %>% select(1:2,5:6,30) %>% kable("html") %>%   kable_styling(bootstrap_options = c("striped", "hover"))
 
