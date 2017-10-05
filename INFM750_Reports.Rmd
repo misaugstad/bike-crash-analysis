@@ -10,9 +10,9 @@ output:
   word_document: default
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include = FALSE}
 
-knitr::opts_chunk$set(echo= TRUE, cache = TRUE)
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 
 ```
 
@@ -23,7 +23,7 @@ knitr::opts_chunk$set(echo= TRUE, cache = TRUE)
 
 This part involves the processing of NYC car crash data. We will select all the bicycle related car crash data, and visualize its time pattern and space pattern.
 
-```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=T,eval=T,fig.width=9}
+```{r, echo = TRUE, warning = FALSE, message = FALSE, tidy = T, eval = T, fig.width = 9}
 library(knitr)
 library(kableExtra)
 library(dplyr)
@@ -43,97 +43,96 @@ You can get the car crash data by going to the  [NYC OpenData](https://opendata.
 * Information on incidence in states is read as factors. Factors are categorical variables not numerical. This "coercion" was caused by the presence of characters that denote missing values.
 
 > factors are variables in R which take on a limited number of different values; such variables are often refered to as categorical variables. One of the most important uses of factors is in statistical modeling; since categorical variables enter into statistical models differently than continuous variables, storing data as factors insures that the modeling functions will treat such data correctly. [Factors in R](https://www.stat.berkeley.edu/classes/s133/factors.html)
-```{r, echo=TRUE,warning=FALSE,message=FALSE}
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
 setwd("~/Dropbox/bike_analysis")
 classes <- c(replicate(4, "factor"), "numeric", "numeric", replicate(4, "factor"),
             replicate(8, "numeric"), replicate(5, "factor"), "numeric", replicate(5, "factor"))
 crash.data <- read.csv("data/NYPD_Motor_Vehicle_Collisions.csv",
-                  skip=0, header=T, na.strings=c("-", ""), colClasses = classes)
+                  skip = 0, header = T, na.strings = c("-", ""), colClasses = classes)
 
 # Fixed date and time columns to have appropriate data types
 crash.data$TIME <- as.POSIXct(crash.data$TIME, format = "%H:%M")
 crash.data$DATE <- as.Date(crash.data$DATE, format = "%m/%d/%Y")
 
 # Add a biker casualty column that includes both injuries and deaths of cyclists
-crash.data.lon <-
+crash.data <-
   crash.data %>%
   mutate(CYCLIST.CASUALTIES = NUMBER.OF.CYCLIST.INJURED + NUMBER.OF.CYCLIST.KILLED)
 
 crash.data %>%
   head() %>%
-  select(1:3,5:7,15:16) %>%
+  select(1:3, 5:6, 15:16) %>%
   kable("html") %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 
 sapply(crash.data, class) %>% head() %>% kable("html")
 ```
 
+
 # Patterns of Missingness
 
-
-```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
-knitr::opts_chunk$set(cache=TRUE)
-aggr(crash.data, col=c('darkgreen', 'tomato', 'skyblue'),
-     numbers=TRUE,
-     sortVars=TRUE,
-     prop=FALSE,
-     labels=names(crash.data),
-     cex.axis=.5, gap=2, ylab=c("Histogram of missing data","Pattern"))
-```
-
-The NYC visualization aggregates incidence by year.
-
-```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9}
-pol <- crash.data.lon %>% group_by(BOROUGH, DATE) %>%  dplyr::summarise( c=sum(CYCLIST.CASUALTIES, na.rm=T))
-pol %>% head() %>% kable("html") %>%  kable_styling(bootstrap_options = c("striped", "hover"))
+```{r, echo = TRUE, warning = FALSE, message = FALSE, tidy = F, eval = T, fig.width = 9}
+knitr::opts_chunk$set(cache = TRUE)
+aggr(crash.data, col = c('darkgreen', 'tomato', 'skyblue'),
+     numbers = TRUE,
+     plot = FALSE,
+     bars = TRUE,
+     sortVars = TRUE,
+     prop = FALSE,
+     labels = names(crash.data),
+     cex.axis = .5, gap = 2, ylab = c("Histogram of missing data", "Pattern"))
 ```
 
 
 # Filtering the data
-For this I will use the _fields_ library
-```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9,fig.height=9}
-output <- filter(crash.data.lon,CYCLIST.CASUALTIES>=1 , LATITUDE != "NA")
 
-output %>% head(27) %>% select(1:2,5:6,30) %>% kable("html") %>%   kable_styling(bootstrap_options = c("striped", "hover"))
+```{r, echo = TRUE, warning = FALSE, message = FALSE, tidy = F, eval = T, fig.width = 9, fig.height = 9}
+bike.crash.data <- filter(crash.data, CYCLIST.CASUALTIES >= 1, LATITUDE != "NA")
 
+bike.crash.data %>%
+  head() %>%
+  select(1:2, 5:6, 30) %>%
+  kable("html") %>%
+  kable_styling(bootstrap_options = c("striped",  "hover"))
 ```
 
 
-# Combine all the data within one day
-```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9,fig.height=9}
-output%>% select(1:2,5:6,30) %>%  group_by(DATE) %>% summarise( c=sum(CYCLIST.CASUALTIES, na.rm=T)) %>%  kable("html") %>%   kable_styling(bootstrap_options = c("striped", "hover"))
+# Group by date
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE, tidy = F, eval = T, fig.width = 9, fig.height = 9}
+bike.crash.data %>%
+  select(1:2, 5:6, 30) %>%
+  group_by(DATE) %>%
+  summarise(DAILY.CASUALTIES = sum(CYCLIST.CASUALTIES, na.rm = T)) %>%
+  head() %>%
+  kable("html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 
-# Visualizing the time pattern of bicycle related car crash data in NYC.
+# Visualizing the seasonal pattern of bicycle related car crash data in NYC.
 
-Select and generate data for visualization
-```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9,fig.height=9}
-Foutput <-  output%>% select(1:2,5:6,30) %>%  group_by(DATE) %>% summarise( c=sum(CYCLIST.CASUALTIES, na.rm=T))
+Select and generate data for visualization.
+```{r, echo = TRUE, warning = FALSE, message = FALSE, tidy = F, eval = T, fig.width = 9, fig.height = 9}
+grouped.bike.data <-
+  bike.crash.data %>%
+  select(1:2, 5:6, 30) %>%
+  group_by(DATE) %>%
+  summarise(DAILY.CASUALTIES = sum(CYCLIST.CASUALTIES, na.rm = T))
 ```
 
 
 Using ggplot2 to visualize the seasonal pattern of bicycle related car crash data in NYC.
-
-```{r, echo=TRUE,warning=FALSE,message=FALSE,tidy=F,eval=T,fig.width=9,fig.height=9}
-Foutput <- output  %>%  select(1:2,5:6,30) %>%  group_by(DATE)  %>%  summarise( c=sum(CYCLIST.CASUALTIES, na.rm=T))
-
-ggplot(data=Foutput, aes(x=as.Date(Foutput$DATE, format="%m/%d/%Y"), y=Foutput$c)) + geom_point() +
-  geom_smooth(method = "auto", color= "red", linetype=1) +
-  labs(title="# of Accidents Involving Bicycles Per Day",
-       x="Date",
-       y="# Accidents Involving Bicycles") +
-  scale_x_date(date_breaks = "6 months", date_labels = "%b - %y")
-
-
-# timeOutput <- output  %>%  select(1:2,5:6,30)  %>%  summarise( c=sum(CYCLIST.CASUALTIES, na.rm=T))
-# ggplot(data=Foutput, aes(x=as.Date(Foutput$TIME), y=Foutput$c)) + geom_point() +
-#   geom_smooth(method = "auto", color= "red", linetype=1) +
-#   labs(title="# of Accidents Involving Bicycles Per Day",
-#        x="Date",
-#        y="# Accidents Involving Bicycles") +
-#   scale_x_date(date_breaks = "6 months", date_labels = "%b - %y")
-
+```{r, echo = TRUE, warning = FALSE, message = FALSE, tidy = F, eval = T, fig.width = 9, fig.height = 9}
+ggplot(data = grouped.bike.data,
+       aes(x = grouped.bike.data$DATE,
+           y = grouped.bike.data$DAILY.CASUALTIES)) +
+  geom_point() +
+  geom_smooth(method = "auto", color = "red", linetype = 1) +
+  labs(title = "# of Accidents Involving Bicycles Per Day",
+       x = "Date",
+       y = "# Accidents Involving Bicycles") +
+  scale_x_date(date_breaks = "6 months", date_labels = "%b-%y")
 ```
 
 
@@ -143,6 +142,4 @@ We visualized all the bicycle involved car accidents based on its geographic coo
 
 IDW interpolation uses the measured values surrounding the prediction location. The measured values closest to the prediction location have more influence on the predicted value than those farther away. IDW assumes that each measured point has a local influence that diminishes with distance. It gives greater weights to points closest to the prediction location, and the weights diminish as a function of distance, hence the name inverse distance weighted.
 
-
 <!-- ![](/home/hfshly/Desktop/INFM_750_Data_Processing/Coding_files/INFMTest_files/figure-html/ccccc.jpg) -->
-
