@@ -3,8 +3,6 @@ title: "INFM_Reports"
 author: "Yao Li, Yuhan Luo, Michael Saugstad"
 output:
   html_document:
-    code_folding: hide
-    css: flat-table.css
     fig-caption: yes
     highlight: tango
     theme: united
@@ -170,13 +168,13 @@ ggplot(data=Foutput, aes(x=as.Date(Foutput$DATE, format="%m/%d/%Y"), y=Foutput$c
   scale_x_date(date_breaks = "6 months", date_labels = "%b - %y")
 
 
-timeOutput <- output  %>%  select(1:2,5:6,30)  %>%  summarise( c=sum(incidence, na.rm=T))
-ggplot(data=Foutput, aes(x=as.Date(Foutput$TIME), y=Foutput$c)) + geom_point() +
-  geom_smooth(method = "auto", color= "red", linetype=1) +
-  labs(title="# of Accidents Involving Bicycles Per Day",
-       x="Date",
-       y="# Accidents Involving Bicycles") +
-  scale_x_date(date_breaks = "6 months", date_labels = "%b - %y")
+# timeOutput <- output  %>%  select(1:2,5:6,30)  %>%  summarise( c=sum(incidence, na.rm=T))
+# ggplot(data=Foutput, aes(x=as.Date(Foutput$TIME), y=Foutput$c)) + geom_point() +
+#   geom_smooth(method = "auto", color= "red", linetype=1) +
+#   labs(title="# of Accidents Involving Bicycles Per Day",
+#        x="Date",
+#        y="# Accidents Involving Bicycles") +
+#   scale_x_date(date_breaks = "6 months", date_labels = "%b - %y")
 
 ```
 
@@ -188,5 +186,5 @@ We visualized all the bicycle involved car accidents based on its geographic coo
 IDW interpolation uses the measured values surrounding the prediction location. The measured values closest to the prediction location have more influence on the predicted value than those farther away. IDW assumes that each measured point has a local influence that diminishes with distance. It gives greater weights to points closest to the prediction location, and the weights diminish as a function of distance, hence the name inverse distance weighted.
 
 
-![](/home/hfshly/Desktop/INFM_750_Data_Processing/Coding_files/INFMTest_files/figure-html/ccccc.jpg)
+<!-- ![](/home/hfshly/Desktop/INFM_750_Data_Processing/Coding_files/INFMTest_files/figure-html/ccccc.jpg) -->
 
