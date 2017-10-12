@@ -1,0 +1,8 @@
+NYC bike racks map (shp):
+http://www.nyc.gov/html/dot/html/about/datafeeds.shtml#bikes
+
+NYC streets map (shp):
+http://gis.ny.gov/gisdata/inventories/details.cfm?DSID=932
+
+NY demographic and economic dataset:
+https://www.census.gov/geo/maps-data/data/tiger-data.html
