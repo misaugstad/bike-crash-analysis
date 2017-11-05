@@ -29,7 +29,10 @@ library(kableExtra)
 library(dplyr)
 library(tidyverse)
 library(VIM)
-library(ggplot2)
+
+# Packages used while trying out new things
+library(osmar)
+library(rgeos)
 ```
 
 # Data on NYC OpenData about car crash 
@@ -43,7 +46,9 @@ You can get the car crash data by going to the  [NYC OpenData](https://opendata.
 * Information on incidence in states is read as factors. Factors are categorical variables not numerical. This "coercion" was caused by the presence of characters that denote missing values.
 
 > factors are variables in R which take on a limited number of different values; such variables are often refered to as categorical variables. One of the most important uses of factors is in statistical modeling; since categorical variables enter into statistical models differently than continuous variables, storing data as factors insures that the modeling functions will treat such data correctly. [Factors in R](https://www.stat.berkeley.edu/classes/s133/factors.html)
+
 ```{r, echo = TRUE, warning = FALSE, message = FALSE}
+
 setwd("~/Dropbox/bike_analysis")
 classes <- c(replicate(4, "factor"), "numeric", "numeric", replicate(4, "factor"),
             replicate(8, "numeric"), replicate(5, "factor"), "numeric", replicate(5, "factor"))
@@ -66,6 +71,30 @@ crash.data %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 
 sapply(crash.data, class) %>% head() %>% kable("html")
+```
+
+```{r testing, echo = TRUE}
+
+src <- osmsource_api()
+bb <- corner_bbox(-74.305107, 40.467969, -73.617032, 40.976377)
+# nyc <- get_osm(bb, source = src)
+tiny.nyc <- get_osm(complete_file(), osmsource_file('~/Downloads/map.osm'))
+roads <- tiny.nyc$ways$tags %>% filter(k == 'highway' & v == 'residential') %>% select(id) %>% distinct()
+inters <- tiny.nyc$ways$refs %>% filter(id %in% roads$id) %>% group_by(ref) %>% filter(n() > 1)
+intersections <- subset(tiny.nyc, node_ids = inters$ref)
+plot(tiny.nyc)
+plot_nodes(subset(tiny.nyc, node_ids = inters$ref), add = TRUE, col = 'green')
+
+plot_nodes(subset(tiny.nyc, node_ids = (tiny.nyc$nodes$tags %>% filter(k == 'highway') %>% select(id) %>% distinct())$id), add = TRUE, col = 'green')
+plot_nodes(subset(tiny.nyc, node_ids = (tiny.nyc$nodes$tags %>% filter(v == 'traffic_signal') %>% select(id) %>% distinct())$id), add = TRUE, col = 'green')
+
+sp.nyc <- as_sp(tiny.nyc)
+plot(sp.nyc$polygons)
+points(crash.data$LATITUDE ~ crash.data$LONGITUDE, col = 'red', cex = 1)
+
+
+# can use gWithinDist against all intersections do see if a point is near an intersection
+
 ```
 
 
