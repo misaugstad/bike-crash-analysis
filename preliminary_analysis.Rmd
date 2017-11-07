@@ -1,0 +1,67 @@
+---
+title: "Preliminary Bike Data Analysis"
+author: "Yao Li, Yuhan Luo, Michael Saugstad"
+output:
+  html_document:
+  fig-caption: yes
+highlight: tango
+theme: united
+toc: yes
+word_document: default
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(dplyr)
+
+crash.data <- read.csv("data/merged_crash_data.csv", header = TRUE, sep = ",")
+crash.data[["incidence"]][is.na(crash.data[["incidence"]])] <- 0
+crash.data <- crash.data %>% rename(total_population = B00001e1,
+                                    housing_units = B00002e1,
+                                    household_income = B19001e1,
+                                    accidents = incidence)
+fit <- glm(accidents ~ total_population + housing_units + household_income + Dist_2_Parking,
+           data = crash.data,
+           family = gaussian())
+summary(fit)
+
+# ggplot(crash.data, aes(x = total_population, y = accidents)) +
+#   geom_smooth(method = 'loess') +
+#   theme_bw() +
+#   scale_y_continuous(limits = c(0.0, NA), oob = scales::rescale_none)
+ggplot(crash.data, aes(x = total_population)) +
+  geom_histogram() +
+  theme_bw()
+ggplot(crash.data, aes(x = housing_units)) +
+  geom_histogram() +
+  theme_bw()
+ggplot(crash.data, aes(x = household_income)) +
+  geom_histogram() +
+  theme_bw()
+ggplot(crash.data, aes(x = Dist_2_Parking)) +
+  geom_histogram() +
+  theme_bw()
+
+
+ggplot(crash.data, aes(x = total_population, y = accidents)) +
+  stat_summary_bin(fun.y = "mean", geom = "bar", binwidth = 10) +
+  theme_bw()
+ggplot(crash.data, aes(x = Dist_2_Parking, y = accidents)) +
+  stat_summary_bin(fun.y = "mean", geom = "bar", binwidth = 25) +
+  theme_bw()
+ggplot(crash.data, aes(x = housing_units, y = accidents)) +
+  stat_summary_bin(fun.y = "mean", geom = "bar") +
+  theme_bw()
+ggplot(crash.data, aes(x = household_income, y = accidents)) +
+  stat_summary_bin(fun.y = "mean", geom = "bar", binwidth = 25) +
+  theme_bw()
+
+ggplot(crash.data, aes(x = accidents)) +
+  geom_histogram() +
+  scale_y_log10() +
+  theme_bw()
+```
