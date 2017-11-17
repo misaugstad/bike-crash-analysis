@@ -17,22 +17,52 @@ knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 ```{r}
 library(tidyverse)
 library(dplyr)
+library(caret)
+library(e1071)
 
-crash.data <- read.csv("data/merged_crash_data.csv", header = TRUE, sep = ",")
-crash.data[["incidence"]][is.na(crash.data[["incidence"]])] <- 0
-crash.data <- crash.data %>% rename(total_population = B00001e1,
-                                    housing_units = B00002e1,
-                                    household_income = B19001e1,
-                                    accidents = incidence)
-fit <- glm(accidents ~ total_population + housing_units + household_income + Dist_2_Parking,
+crash.data <- read.csv("data/All_data.csv", header = TRUE, sep = ",")
+crash.data$accidents <- rowSums(crash.data[11:118])
+crash.data<-na.omit(crash.data)
+
+glmfit<- glm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
            data = crash.data,
            family = gaussian())
-summary(fit)
 
-# ggplot(crash.data, aes(x = total_population, y = accidents)) +
-#   geom_smooth(method = 'loess') +
-#   theme_bw() +
-#   scale_y_continuous(limits = c(0.0, NA), oob = scales::rescale_none)
+print(summary(glmfit))
+
+#drop unneccassry columns
+crash.data <- subset(crash.data, select = -c(11:118))
+
+# required package for svm: install.packages('caret', dependencies = TRUE)
+# As SVM usually act as a binary classifier, I may want to merge all null zero accidents to 1?
+# crash.data <- cbind(crash.data$accidents, ifelse(crash.data$accidents>0, 1, 0))
+
+# construct training and testing dataset
+set.seed(1000)
+intrain <- createDataPartition(y = crash.data$accidents, p= 0.8, list = FALSE)
+training <- crash.data[intrain,]
+testing <- crash.data[-intrain,]
+print(dim(training) + dim(testing))
+
+# covert accidents into categorical
+training[["accidents"]] = factor(training[["accidents"]])
+
+trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+set.seed(1000)
+
+svmfit <- train(accidents ~., data = training, method = "svmRadial",
+                    trControl=trctrl,
+                    preProcess = c("center", "scale"),
+                    tuneLength = 10)
+print(summary(svmfit))
+
+test_pred <- predict(svmfit, newdata = testing)
+print(test_pred)
+
+
+# ==================================================
+# Create visualizations
+
 ggplot(crash.data, aes(x = total_population)) +
   geom_histogram() +
   theme_bw()
@@ -42,7 +72,7 @@ ggplot(crash.data, aes(x = housing_units)) +
 ggplot(crash.data, aes(x = household_income)) +
   geom_histogram() +
   theme_bw()
-ggplot(crash.data, aes(x = Dist_2_Parking)) +
+ggplot(crash.data, aes(x = NEAR_DIST)) +
   geom_histogram() +
   theme_bw()
 
@@ -50,7 +80,7 @@ ggplot(crash.data, aes(x = Dist_2_Parking)) +
 ggplot(crash.data, aes(x = total_population, y = accidents)) +
   stat_summary_bin(fun.y = "mean", geom = "bar", binwidth = 10) +
   theme_bw()
-ggplot(crash.data, aes(x = Dist_2_Parking, y = accidents)) +
+ggplot(crash.data, aes(x = NEAR_DIST, y = accidents)) +
   stat_summary_bin(fun.y = "mean", geom = "bar", binwidth = 25) +
   theme_bw()
 ggplot(crash.data, aes(x = housing_units, y = accidents)) +
