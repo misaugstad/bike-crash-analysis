@@ -38,29 +38,31 @@ glmfit<- glm(accidents ~ housing_units + household_income + NEAR_DIST + Width_ma
 
 print(summary(glmfit))
 
-# required package for svm: install.packages('caret', dependencies = TRUE)
-
-# construct training and testing dataset
-set.seed(10)
+# Construct Training & Testing dataset
+set.seed(5)
 intrain <- createDataPartition(y = crash.data$accidents, p= 0.8, list = FALSE)
 training <- crash.data[intrain,]
 testing <- crash.data[-intrain,]
 print(dim(training) + dim(testing))
 
-# covert accidents into categorical
-# training[["accidents"]] = factor(training[["accidents"]])
+# I'm not sure if we run it as a regression, how to measure the predication performance, so I coverted accidents into categorical in order to run classification.
+training[["accidents"]] = factor(training[["accidents"]])
+testing[["accidents"]] = factor(testing[["accidents"]])
 
-trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
-set.seed(10)
+trctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 3)
+set.seed(5)
 
-svmfit <- train(accidents ~., data = training, method = "svmRadial",
+# SVM
+svmfit <- train(accidents ~., data = training, method = "svmLinear",
                     trControl=trctrl,
                     preProcess = c("center", "scale"),
-                    tuneLength = 10)
+                    tuneLength = 5,
+                    probability = TRUE)
 print(summary(svmfit))
 
-test_pred <- predict(svmfit, newdata = testing)
-print(test_pred)
+test_pred <- predict(svmfit, testing)
+testing <- transform(testing,pred_acc = test_pred)
+print(confusionMatrix(data = testing$pred_acc, reference = testing$accidents))
 
 # ==================================================
 # Create visualizations
