@@ -21,34 +21,37 @@ library(caret)
 library(e1071)
 
 crash.data <- read.csv("data/All_data.csv", header = TRUE, sep = ",")
-crash.data$accidents <- rowSums(crash.data[11:118])
-crash.data<-na.omit(crash.data)
+#crash.data[["incidence"]][is.na(crash.data[["incidence"]])] <- 0
+#crash.data$accidents <- rowSums(crash.data[11:118])
+crash.data<- na.omit(crash.data)
+crash.data<- na.omit(crash.data)
+crash.data <- transform(crash.data,
+                        accidents = Accidents_12_B15)
 
-glmfit<- glm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
+print(table(crash.data$accidents))
+
+#remove zero-accident intersections
+crash.data<-subset(crash.data, accidents!=0)
+glmfit<- glm(accidents ~ housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
            data = crash.data,
            family = gaussian())
 
 print(summary(glmfit))
 
-#drop unneccassry columns
-crash.data <- subset(crash.data, select = -c(11:118))
-
 # required package for svm: install.packages('caret', dependencies = TRUE)
-# As SVM usually act as a binary classifier, I may want to merge all null zero accidents to 1?
-# crash.data <- cbind(crash.data$accidents, ifelse(crash.data$accidents>0, 1, 0))
 
 # construct training and testing dataset
-set.seed(1000)
+set.seed(10)
 intrain <- createDataPartition(y = crash.data$accidents, p= 0.8, list = FALSE)
 training <- crash.data[intrain,]
 testing <- crash.data[-intrain,]
 print(dim(training) + dim(testing))
 
 # covert accidents into categorical
-training[["accidents"]] = factor(training[["accidents"]])
+# training[["accidents"]] = factor(training[["accidents"]])
 
 trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
-set.seed(1000)
+set.seed(10)
 
 svmfit <- train(accidents ~., data = training, method = "svmRadial",
                     trControl=trctrl,
@@ -58,7 +61,6 @@ print(summary(svmfit))
 
 test_pred <- predict(svmfit, newdata = testing)
 print(test_pred)
-
 
 # ==================================================
 # Create visualizations
