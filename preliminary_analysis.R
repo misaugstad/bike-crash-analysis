@@ -19,8 +19,8 @@ print(nrow(crash.data[crash.data$accidents %in% 0,])/nrow(crash.data))
 
 # GLM
 glmfit<- glm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
-           data = crash.data,
-           family = gaussian())
+             data = crash.data,
+             family = gaussian())
 
 print(summary(glmfit))
 
@@ -29,12 +29,12 @@ print(summary(glmfit))
 crash.data <- subset(crash.data, select = -c(11:120))
 crash.data <- subset(crash.data, select = -c(1))
 
-crash.data[["accidents"]] = factor(crash.data[["accidents"]])
+#crash.data[["accidents"]] = factor(crash.data[["accidents"]])
 
 #crash.data$accidents<-cut(crash.data$accidents, c(0,1,2,4,5,10))
 
-# crash.data$accidents <- cut(crash.data$accidents, c(-Inf, 0, 1, 3, 6, 10, Inf),
-#                    labels=c('<1', '1', '2-3', '4-5','6-10', '>10'))
+crash.data$accidents <- cut(crash.data$accidents, c(-Inf, 0, 1, 3, 6, 10, Inf),
+                    labels=c('<1', '1', '2-3', '4-5','6-10', '>10'))
 
 #write.csv(crash.data, file= "bikecrash.csv")
 # required package for svm: install.packages('caret', dependencies = TRUE)
@@ -56,13 +56,13 @@ set.seed(5)
 
 # SVM
 svmfit <- train(accidents ~., data = training, method = "svmLinear",
-                    trControl=trctrl,
-                    preProcess = c("center", "scale"),
-                    tuneLength = 5,
-                    probability = TRUE)
+                trControl=trctrl,
+                preProcess = c("center", "scale"),
+                tuneLength = 5,
+                probability = TRUE)
 print(summary(svmfit))
 
-svmfit <- svm(accidents ~., data = training)
+#svmfit <- svm(accidents ~., data = training)
 
 test_pred <- predict(svmfit, testing)
 
