@@ -32,11 +32,15 @@ print(table(crash.data$accidents))
 
 #remove zero-accident intersections
 crash.data<-subset(crash.data, accidents!=0)
+
 glmfit<- glm(accidents ~ housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
            data = crash.data,
            family = gaussian())
 
 print(summary(glmfit))
+
+#drop unneccassry columns
+crash.data <- subset(crash.data, select = -c(11:118))
 
 # Construct Training & Testing dataset
 set.seed(5)
