@@ -14,8 +14,8 @@ print(table(crash.data$accidents))
 # print the percentage of zero-accident intersections
 print(nrow(crash.data[crash.data$accidents %in% 0,])/nrow(crash.data))
 
-#remove zero-accident intersections
-#crash.data<-subset(crash.data, accidents!=0)
+# remove zero-accident intersections
+crash.data<-subset(crash.data, accidents!=0)
 
 # GLM
 glmfit<- glm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
@@ -33,9 +33,9 @@ crash.data <- subset(crash.data, select = -c(1))
 
 #crash.data$accidents<-cut(crash.data$accidents, c(0,1,2,4,5,10))
 
-crash.data$accidents <- cut(crash.data$accidents, c(-Inf, 0, 1, 3, 6, 10, Inf),
-                    labels=c('<1', '1', '2-3', '4-5','6-10', '>10'))
-
+crash.data$accidents <- cut(crash.data$accidents, c(-Inf, 1, Inf),
+                    labels=c('1', '>1'))
+print(table(crash.data$accidents))
 #write.csv(crash.data, file= "bikecrash.csv")
 # required package for svm: install.packages('caret', dependencies = TRUE)
 
