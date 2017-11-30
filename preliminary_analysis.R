@@ -7,10 +7,10 @@ library(xgboost)
 
 # required package for svm: install.packages('caret', dependencies = TRUE)
 
-crash.data<- read.csv(file="data/All_data.csv", header=TRUE, sep=",")
+crash.data <- read.csv(file = "data/All_data.csv", header = TRUE, sep = ",")
 #crash.data[["incidence"]][is.na(crash.data[["incidence"]])] <- 0
 #crash.data$accidents <- rowSums(crash.data[11:120])
-crash.data<- na.omit(crash.data)
+crash.data <- na.omit(crash.data)
 
 # Buffer 15 meters
 crash.data <- transform(crash.data,
@@ -33,7 +33,7 @@ backup.data <- crash.data[, c(1:12)]
 # =============== Classification ========================
 # classify zero- and non-zero-accidents interactions
 crash.data$accidents_class <- cut(crash.data$accidents, c(-Inf, 0, Inf),
-                            labels=c('0', '>0'))
+                            labels = c('0', '>0'))
 print(table(crash.data$accidents_class))
 
 # sampling
@@ -54,7 +54,7 @@ crash.data <- subset(crash.data, select = -c(accidents))
 
 # construct training and testing dataset
 set.seed(9560)
-intrain <- createDataPartition(y = crash.data$Class, p= 0.8, list = FALSE)
+intrain <- createDataPartition(y = crash.data$Class, p = 0.8, list = FALSE)
 training <- crash.data[intrain,]
 testing <- crash.data[-intrain,]
 print(dim(training) + dim(testing))
@@ -64,7 +64,7 @@ set.seed(9560)
 
 # SVM
 svmfit <- train(Class ~., data = training, method = "svmRadial",
-                trControl=trctrl,
+                trControl = trctrl,
                 preProcess = c("center", "scale"),
                 tuneLength = 5,
                 probability = TRUE)
@@ -104,17 +104,18 @@ mean(as.numeric(predicty > 0.5) == as.numeric(testing$Class) - 1)
 
 # =============== Regression ========================
 # remove zero-accident intersections
-crash.data<-subset(backup.data, accidents!=0)
+crash.data <- subset(backup.data, accidents != 0)
 
 # GLM
-glmfit<- glm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
+glmfit <- glm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
              data = crash.data,
              family = gaussian())
 
 print(summary(glmfit))
 
 # Multiple Linear Regression
-lmfit <- lm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max, data=crash.data)
+lmfit <- lm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
+            data = crash.data)
 print(summary(lmfit))
 
 # perform step-wise feature selection
