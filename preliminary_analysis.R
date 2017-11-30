@@ -2,6 +2,8 @@ library(tidyverse)
 library(dplyr)
 library(caret)
 library(e1071)
+library(Matrix)
+library(xgboost)
 
 # required package for svm: install.packages('caret', dependencies = TRUE)
 
@@ -75,6 +77,30 @@ plot(test_pred)
 #testing <- transform(testing,pred_acc = test_pred)
 print(confusionMatrix(data = test_pred, reference = testing$Class))
 print(confusionMatrix(data = test_pred, reference = testing$Class, mode = "prec_recall"))
+
+
+# XGBOOST!
+training.sparse <- sparse.model.matrix(Class ~ .-1, data = training)
+testing.sparse <- sparse.model.matrix(Class ~ .-1, data = testing)
+
+# Create the model.
+xgb.crash.model <- xgboost(data = training.sparse,
+                           label = as.numeric(training$Class) - 1,
+                           max_depth = 4,
+                           nthread = 2,
+                           nrounds = 200,
+                           objective = "binary:logistic",
+                           verbose = 0)
+
+# Visualize which factors are most important.
+impt <- xgb.importance(feature_names = colnames(training.sparse), model = blah)
+xgb.plot.importance(importance_matrix = impt)
+
+# Predict on test dataset.
+predicty <- predict(xgb.crash.model, testing.sparse)
+
+# Get accuracy or prediction.
+mean(as.numeric(predicty > 0.5) == as.numeric(testing$Class) - 1)
 
 # =============== Regression ========================
 # remove zero-accident intersections
