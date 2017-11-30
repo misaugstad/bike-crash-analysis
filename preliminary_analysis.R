@@ -7,7 +7,7 @@ library(xgboost)
 
 # required package for svm: install.packages('caret', dependencies = TRUE)
 
-crash.data<- read.csv(file="All_data.csv", header=TRUE, sep=",")
+crash.data<- read.csv(file="data/All_data.csv", header=TRUE, sep=",")
 #crash.data[["incidence"]][is.na(crash.data[["incidence"]])] <- 0
 #crash.data$accidents <- rowSums(crash.data[11:120])
 crash.data<- na.omit(crash.data)
