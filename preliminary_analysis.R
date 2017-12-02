@@ -1,20 +1,28 @@
+library(readr)
 library(tidyverse)
 library(dplyr)
 library(caret)
 library(e1071)
 library(Matrix)
 library(xgboost)
+library(party)
+library(randomForest)
+
+setwd("")
 
 # required package for svm: install.packages('caret', dependencies = TRUE)
 
-crash.data <- read.csv(file = "data/All_data.csv", header = TRUE, sep = ",")
+# add read_csv for handling big data
+crash.data <- read_csv(file = "data/All_data.csv", col_names = TRUE)
+
+#crash.data <- read.csv(file = "data/All_data.csv", header = TRUE, sep = ",")
 #crash.data[["incidence"]][is.na(crash.data[["incidence"]])] <- 0
 #crash.data$accidents <- rowSums(crash.data[11:120])
 crash.data <- na.omit(crash.data)
 
 # Buffer 15 meters
-crash.data <- transform(crash.data,
-                        accidents = Accidents_12_B15 + Accidents_13_B15 + Accidents_14_B15 + Accidents_15_B15 + Accidents_16_B15 + Accidents_17_B15)
+crash.data <- transform(crash.data, accidents = Accidents_12_B15 + Accidents_13_B15 + Accidents_14_B15 + 
+                          Accidents_15_B15 + Accidents_16_B15 + Accidents_17_B15)
 print(table(crash.data$accidents))
 
 # Buffer 30 meters
@@ -23,8 +31,7 @@ print(table(crash.data$accidents))
 # print(table(crash.data$accidents))
 
 #drop unneccassry columns
-crash.data <- subset(crash.data, select = -c(13:120))
-crash.data <- subset(crash.data, select = -c(1))
+crash.data <- subset(crash.data, select = -c(1, 13:120))
 
 # print the percentage of zero-accident intersections
 print(nrow(crash.data[crash.data$accidents %in% 0,])/nrow(crash.data))
@@ -93,14 +100,48 @@ xgb.crash.model <- xgboost(data = training.sparse,
                            verbose = 0)
 
 # Visualize which factors are most important.
-impt <- xgb.importance(feature_names = colnames(training.sparse), model = blah)
+impt <- xgb.importance(feature_names = colnames(training.sparse), model = xgb.crash.model )
 xgb.plot.importance(importance_matrix = impt)
 
 # Predict on test dataset.
 predicty <- predict(xgb.crash.model, testing.sparse)
 
+plot(predicty)
+
 # Get accuracy or prediction.
 mean(as.numeric(predicty > 0.5) == as.numeric(testing$Class) - 1)
+
+# random forest
+
+# build forest
+output.forest <- randomForest(Class ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
+                              data = training, importance = T, proximity = T, ntree = 300, mtry = 2, do.trace = 100)
+
+# running test data
+predictRF <- predict(output.forest, testing)
+
+# predictRF <- predict(output.forest, crash.data)
+
+
+# Predicition accuracy
+confusionMatrix(data=predictRF,
+                reference=testing$Class,
+                positive='>0')
+
+
+#confusionMatrix(data=predictRF,
+#                reference=crash.data$accidents_class,
+#                positive='>0')
+
+# plot how the error changes
+plot(output.forest, log="y")
+
+# showing the importance of each factor
+varImpPlot(output.forest)
+
+# basic information of randomforest
+print(output.forest)
+
 
 # =============== Regression ========================
 # remove zero-accident intersections
@@ -126,3 +167,18 @@ predictions <- predict(lmfit, crash.data)
 mse <- mean((crash.data$accidents - predictions)^2)
 RMSE <- sqrt(mse)
 print(RMSE)
+
+
+# random forest
+
+output.forest <- randomForest(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
+                              data = crash.data, importance = T, proximity = T, ntree = 500, mtry = 2, do.trace = 100)
+
+
+plot(predictRF)
+plot(output.forest, log="y")
+varImpPlot(output.forest)
+print(output.forest)
+round(importance(output.forest))
+plot(importance(output.forest))
+
