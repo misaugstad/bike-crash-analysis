@@ -8,8 +8,6 @@ library(xgboost)
 library(party)
 library(randomForest)
 
-setwd("")
-
 # required package for svm: install.packages('caret', dependencies = TRUE)
 
 # add read_csv for handling big data
@@ -21,7 +19,7 @@ crash.data <- read_csv(file = "data/All_data.csv", col_names = TRUE)
 crash.data <- na.omit(crash.data)
 
 # Buffer 15 meters
-crash.data <- transform(crash.data, accidents = Accidents_12_B15 + Accidents_13_B15 + Accidents_14_B15 + 
+crash.data <- transform(crash.data, accidents = Accidents_12_B15 + Accidents_13_B15 + Accidents_14_B15 +
                           Accidents_15_B15 + Accidents_16_B15 + Accidents_17_B15)
 print(table(crash.data$accidents))
 
