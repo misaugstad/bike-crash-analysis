@@ -5,6 +5,7 @@ library(caret)
 library(e1071)
 library(Matrix)
 library(xgboost)
+library(reshape2)
 library(party)
 library(randomForest)
 
@@ -79,7 +80,6 @@ table(crash.data.down.sampled$Class)
 #write.csv(crash.data, file= "bikecrash.csv")
 
 # construct training and testing dataset
-set.seed(9560)
 intrain <- createDataPartition(y = crash.data.down.sampled$Class, p = 0.8, list = FALSE)
 training <- crash.data.down.sampled[intrain,]
 testing <- crash.data.down.sampled[-intrain,]
@@ -131,6 +131,23 @@ print(confusionMatrix(data = factor(predicty > 0.5, levels = c(FALSE, TRUE), lab
                       reference = testing$Class, positive = '>0'))
 print(confusionMatrix(data = factor(predicty > 0.95, levels = c(FALSE, TRUE), labels = c('0', '>0')),
                       reference = testing$Class, mode = "prec_recall", positive = '>0'))
+
+# Look at how choosing a cutoff changes precision, recall, and overall accuracy
+calculate.accuracies <- Vectorize( function(cutoff) {
+  prediction.factor <- factor(predicty > cutoff, levels = c(FALSE, TRUE), labels = c('0', '>0'))
+  conf.mat <- confusionMatrix(data = prediction.factor, reference = testing$Class, positive = '>0')
+  conf.mat$byClass[c('Precision','Recall', 'F1', 'Balanced Accuracy')]
+})
+cutoffs <- seq(0, 1, 0.01)
+xgb.accuracies <-
+  calculate.accuracies(cutoff = cutoffs) %>%
+  t() %>% # transpose
+  data.frame() %>% # convert to data frame
+  mutate(cutoff = cutoffs) # add column with the cutoff value
+
+xgb.accuracies.melt <- melt(xgb.accuracies, id.vars = 'cutoff', value.name = 'accuracy')
+ggplot(data = xgb.accuracies.melt, mapping = aes(x = cutoff, y = accuracy)) +
+  geom_line(aes(colour = variable))
 
 # random forest
 
