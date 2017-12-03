@@ -10,17 +10,32 @@ library(randomForest)
 
 # required package for svm: install.packages('caret', dependencies = TRUE)
 
+independent.vars <- c('total_population',
+                      'housing_units',
+                      'household_income',
+                      'NEAR_DIST',
+                      'Width_max',
+                      'Rating_min',
+                      'Speed_max',
+                      'ACC_max',
+                      'OneWay_max')
+dependent.var <- c('accidents')
+lat.lng.vars <- c('Latitude', 'Longitude')
+accident.year.cols <- c('Accidents_12_B15', 'Accidents_13_B15', 'Accidents_14_B15', 'Accidents_15_B15',
+                          'Accidents_16_B15', 'Accidents_17_B15')
+
 # add read_csv for handling big data
 crash.data <- read_csv(file = "data/All_data.csv", col_names = TRUE)
 
-#crash.data <- read.csv(file = "data/All_data.csv", header = TRUE, sep = ",")
-#crash.data[["incidence"]][is.na(crash.data[["incidence"]])] <- 0
-#crash.data$accidents <- rowSums(crash.data[11:120])
-crash.data <- na.omit(crash.data)
-
 # Buffer 15 meters
-crash.data <- transform(crash.data, accidents = Accidents_12_B15 + Accidents_13_B15 + Accidents_14_B15 +
-                          Accidents_15_B15 + Accidents_16_B15 + Accidents_17_B15)
+crash.data <-
+  crash.data %>%
+  mutate(accidents = # years 2012-2017
+           Accidents_12_B15 + Accidents_13_B15 + Accidents_14_B15 + Accidents_15_B15 +
+           Accidents_16_B15 + Accidents_17_B15) %>%
+  select(one_of(independent.vars, dependent.var)) %>%
+  na.omit()
+
 print(table(crash.data$accidents))
 
 # Buffer 30 meters
@@ -28,8 +43,6 @@ print(table(crash.data$accidents))
 #                         accidents = Accidents_12_B30 + Accidents_13_B30 + Accidents_14_B30 + Accidents_15_B30 + Accidents_16_B30 + Accidents_17_B30)
 # print(table(crash.data$accidents))
 
-#drop unneccassry columns
-crash.data <- subset(crash.data, select = -c(1, 13:120))
 
 # print the percentage of zero-accident intersections
 print(nrow(crash.data[crash.data$accidents %in% 0,])/nrow(crash.data))
@@ -37,21 +50,25 @@ backup.data <- crash.data[, c(1:12)]
 
 # =============== Classification ========================
 # classify zero- and non-zero-accidents interactions
-crash.data$accidents_class <- cut(crash.data$accidents, c(-Inf, 0, Inf),
-                            labels = c('0', '>0'))
-print(table(crash.data$accidents_class))
+crash.data.with.class <-
+  crash.data %>%
+  mutate(accidents_class = cut(accidents, c(-Inf, 0, Inf), labels = c('0', '>0'))) %>%
+  select(-accidents)
+
+print(table(crash.data.with.class$accidents_class))
 
 # sampling
 set.seed(9560)
 # crash.data <- downSample(x = crash.data[, -ncol(crash.data)], y = crash.data$accidents_class)
 # crash.data <- as.data.frame(crash.data)
 # colnames(crash.data)  <-c("Zero","Nonzero")
-crash.data.down.sampled <- downSample(x = crash.data[, -ncol(crash.data)],
-                         y = crash.data$accidents_class)
-table(crash.data.down.sampled$Class)
+# crash.data.down.sampled <- downSample(x = crash.data.with.class[, -ncol(crash.data)],
+#                                       y = crash.data.with.class$accidents_class)
+crash.data.down.sampled <-
+  downSample(x = crash.data.with.class %>% select(one_of(independent.vars)),
+             y = crash.data.with.class$accidents_class)
 
-# drop original accidents
-crash.data.down.sampled <- subset(crash.data.down.sampled, select = -c(accidents))
+table(crash.data.down.sampled$Class)
 
 #crash.data[["accidents"]] = factor(crash.data[["accidents"]])
 #crash.data$accidents<-cut(crash.data$accidents, c(0,1,2,4,5,10))
@@ -62,12 +79,11 @@ set.seed(9560)
 intrain <- createDataPartition(y = crash.data.down.sampled$Class, p = 0.8, list = FALSE)
 training <- crash.data.down.sampled[intrain,]
 testing <- crash.data.down.sampled[-intrain,]
-print(dim(training) + dim(testing))
+print(nrow(training) + nrow(testing))
 
 trctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 3)
-set.seed(9560)
 
-# SVM
+# run SVM
 svmfit <- train(Class ~., data = training, method = "svmRadial",
                 trControl = trctrl,
                 preProcess = c("center", "scale"),
@@ -104,10 +120,13 @@ xgb.plot.importance(importance_matrix = impt)
 # Predict on test dataset.
 predicty <- predict(xgb.crash.model, testing.sparse)
 
-plot(predicty)
+# plot(predicty)
 
-# Get accuracy or prediction.
-mean(as.numeric(predicty > 0.5) == as.numeric(testing$Class) - 1)
+# Get accuracy of prediction.
+print(confusionMatrix(data = factor(predicty > 0.5, levels = c(FALSE, TRUE), labels = c('0', '>0')),
+                      reference = testing$Class, positive = '>0'))
+print(confusionMatrix(data = factor(predicty > 0.95, levels = c(FALSE, TRUE), labels = c('0', '>0')),
+                      reference = testing$Class, mode = "prec_recall", positive = '>0'))
 
 # random forest
 
@@ -122,9 +141,9 @@ predictRF <- predict(output.forest, testing)
 
 
 # Predicition accuracy
-confusionMatrix(data=predictRF,
-                reference=testing$Class,
-                positive='>0')
+confusionMatrix(data = predictRF,
+                reference = testing$Class,
+                positive = '>0')
 
 
 #confusionMatrix(data=predictRF,
@@ -132,7 +151,7 @@ confusionMatrix(data=predictRF,
 #                positive='>0')
 
 # plot how the error changes
-plot(output.forest, log="y")
+plot(output.forest, log = "y")
 
 # showing the importance of each factor
 varImpPlot(output.forest)
@@ -143,26 +162,26 @@ print(output.forest)
 
 # =============== Regression ========================
 # remove zero-accident intersections
-crash.data <- subset(backup.data, accidents != 0)
+crash.data.for.regression <- subset(backup.data, accidents != 0)
 
 # GLM
 glmfit <- glm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
-              data = crash.data,
+              data = crash.data.for.regression,
               family = gaussian())
 
 print(summary(glmfit))
 
 # Multiple Linear Regression
 lmfit <- lm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
-            data = crash.data)
+            data = crash.data.for.regression)
 print(summary(lmfit))
 
 # perform step-wise feature selection
 # lmfit <- step(lmfit)
 # make predictions
-predictions <- predict(lmfit, crash.data)
+predictions <- predict(lmfit, crash.data.for.regression)
 # summarize accuracy
-mse <- mean((crash.data$accidents - predictions)^2)
+mse <- mean((crash.data.for.regression$accidents - predictions)^2)
 RMSE <- sqrt(mse)
 print(RMSE)
 
@@ -170,11 +189,11 @@ print(RMSE)
 # random forest
 
 output.forest <- randomForest(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
-                              data = crash.data, importance = T, proximity = T, ntree = 500, mtry = 2, do.trace = 100)
+                              data = crash.data.for.regression, importance = T, proximity = T, ntree = 500, mtry = 2, do.trace = 100)
 
 
 plot(predictRF)
-plot(output.forest, log="y")
+plot(output.forest, log = "y")
 varImpPlot(output.forest)
 print(output.forest)
 round(importance(output.forest))
