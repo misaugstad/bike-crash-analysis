@@ -10,19 +10,17 @@ library(randomForest)
 
 # required package for svm: install.packages('caret', dependencies = TRUE)
 
-independent.vars <- c('total_population',
-                      'housing_units',
-                      'household_income',
-                      'NEAR_DIST',
-                      'Width_max',
-                      'Rating_min',
-                      'Speed_max',
+independent.vars <- c('census.block.population',
+                      'census.block.num.housing.units',
+                      'census.block.household.income',
+                      'dist.to.bike.parking',
+                      'road.width.max',
+                      'pavement.rating.min',
+                      'speed.limit.max',
                       'ACC_max',
-                      'OneWay_max')
+                      'includes.oneway')
 dependent.var <- c('accidents')
-lat.lng.vars <- c('Latitude', 'Longitude')
-accident.year.cols <- c('Accidents_12_B15', 'Accidents_13_B15', 'Accidents_14_B15', 'Accidents_15_B15',
-                          'Accidents_16_B15', 'Accidents_17_B15')
+lat.lng.vars <- c('lat', 'lng')
 
 # add read_csv for handling big data
 crash.data <- read_csv(file = "data/All_data.csv", col_names = TRUE)
@@ -33,20 +31,26 @@ crash.data <-
   mutate(accidents = # years 2012-2017
            Accidents_12_B15 + Accidents_13_B15 + Accidents_14_B15 + Accidents_15_B15 +
            Accidents_16_B15 + Accidents_17_B15) %>%
+  rename(census.block.population = total_population,
+         census.block.num.housing.units = housing_units,
+         census.block.household.income = household_income,
+         dist.to.bike.parking = NEAR_DIST,
+         road.width.max = Width_max,
+         pavement.rating.min = Rating_min,
+         speed.limit.max = Speed_max,
+         ACC_max = ACC_max,
+         includes.oneway = OneWay_max,
+         lat = Latitude,
+         lng = Longitude) %>%
   select(one_of(independent.vars, dependent.var)) %>%
   na.omit()
 
 print(table(crash.data$accidents))
 
-# Buffer 30 meters
-# crash.data <- transform(crash.data,
-#                         accidents = Accidents_12_B30 + Accidents_13_B30 + Accidents_14_B30 + Accidents_15_B30 + Accidents_16_B30 + Accidents_17_B30)
-# print(table(crash.data$accidents))
-
-
 # print the percentage of zero-accident intersections
 print(nrow(crash.data[crash.data$accidents %in% 0,])/nrow(crash.data))
-backup.data <- crash.data[, c(1:12)]
+backup.data <- crash.data %>% select_all()
+
 
 # =============== Classification ========================
 # classify zero- and non-zero-accidents interactions
@@ -131,7 +135,7 @@ print(confusionMatrix(data = factor(predicty > 0.95, levels = c(FALSE, TRUE), la
 # random forest
 
 # build forest
-output.forest <- randomForest(Class ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
+output.forest <- randomForest(Class ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
                               data = training, importance = T, proximity = T, ntree = 300, mtry = 2, do.trace = 100)
 
 # running test data
@@ -165,14 +169,14 @@ print(output.forest)
 crash.data.for.regression <- subset(backup.data, accidents != 0)
 
 # GLM
-glmfit <- glm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
+glmfit <- glm(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
               data = crash.data.for.regression,
               family = gaussian())
 
 print(summary(glmfit))
 
 # Multiple Linear Regression
-lmfit <- lm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
+lmfit <- lm(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
             data = crash.data.for.regression)
 print(summary(lmfit))
 
@@ -188,7 +192,7 @@ print(RMSE)
 
 # random forest
 
-output.forest <- randomForest(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
+output.forest <- randomForest(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
                               data = crash.data.for.regression, importance = T, proximity = T, ntree = 500, mtry = 2, do.trace = 100)
 
 
