@@ -46,12 +46,12 @@ set.seed(9560)
 # crash.data <- downSample(x = crash.data[, -ncol(crash.data)], y = crash.data$accidents_class)
 # crash.data <- as.data.frame(crash.data)
 # colnames(crash.data)  <-c("Zero","Nonzero")
-crash.data <- downSample(x = crash.data[, -ncol(crash.data)],
+crash.data.down.sampled <- downSample(x = crash.data[, -ncol(crash.data)],
                          y = crash.data$accidents_class)
-table(crash.data$Class)
+table(crash.data.down.sampled$Class)
 
 # drop original accidents
-crash.data <- subset(crash.data, select = -c(accidents))
+crash.data.down.sampled <- subset(crash.data.down.sampled, select = -c(accidents))
 
 #crash.data[["accidents"]] = factor(crash.data[["accidents"]])
 #crash.data$accidents<-cut(crash.data$accidents, c(0,1,2,4,5,10))
@@ -59,9 +59,9 @@ crash.data <- subset(crash.data, select = -c(accidents))
 
 # construct training and testing dataset
 set.seed(9560)
-intrain <- createDataPartition(y = crash.data$Class, p = 0.8, list = FALSE)
-training <- crash.data[intrain,]
-testing <- crash.data[-intrain,]
+intrain <- createDataPartition(y = crash.data.down.sampled$Class, p = 0.8, list = FALSE)
+training <- crash.data.down.sampled[intrain,]
+testing <- crash.data.down.sampled[-intrain,]
 print(dim(training) + dim(testing))
 
 trctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 3)
@@ -147,8 +147,8 @@ crash.data <- subset(backup.data, accidents != 0)
 
 # GLM
 glmfit <- glm(accidents ~ total_population + housing_units + household_income + NEAR_DIST + Width_max + Rating_min + Speed_max + ACC_max + OneWay_max,
-             data = crash.data,
-             family = gaussian())
+              data = crash.data,
+              family = gaussian())
 
 print(summary(glmfit))
 
