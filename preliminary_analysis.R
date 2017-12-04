@@ -8,6 +8,8 @@ library(xgboost)
 library(reshape2)
 library(party)
 library(randomForest)
+library(MASS)
+library(glmnet)
 
 # required package for svm: install.packages('caret', dependencies = TRUE)
 
@@ -88,7 +90,7 @@ print(nrow(training) + nrow(testing))
 trctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 3)
 
 # run SVM
-svmfit <- train(Class ~., data = training, method = "svmRadial",
+svmfit <- train(Class ~., data = training, method = "svmLinear",
                 trControl = trctrl,
                 preProcess = c("center", "scale"),
                 tuneLength = 5,
@@ -185,6 +187,17 @@ print(output.forest)
 # remove zero-accident intersections
 crash.data.for.regression <- subset(backup.data, accidents != 0)
 
+# training & testing
+## 80% of the sample size
+smp_size <- floor(0.8 * nrow(crash.data.for.regression))
+
+## set the seed to make your partition reproductible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(crash.data.for.regression)), size = smp_size)
+
+train <- crash.data.for.regression[train_ind, ]
+test <- crash.data.for.regression[-train_ind, ]
+
 # GLM
 glmfit <- glm(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
               data = crash.data.for.regression,
@@ -194,18 +207,54 @@ print(summary(glmfit))
 
 # Multiple Linear Regression
 lmfit <- lm(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
-            data = crash.data.for.regression)
+            data = train)
 print(summary(lmfit))
 
-# perform step-wise feature selection
-# lmfit <- step(lmfit)
 # make predictions
-predictions <- predict(lmfit, crash.data.for.regression)
+predictions <- predict(lmfit, test)
 # summarize accuracy
-mse <- mean((crash.data.for.regression$accidents - predictions)^2)
+mse <- mean((test$accidents - predictions)^2)
 RMSE <- sqrt(mse)
 print(RMSE)
+print(summary(lmfit)$r.squared)
 
+# Stepwise regression (usually deal with multiple IVs)
+# perform step-wise feature selection
+min.lm <- lm(accidents ~ 1,
+             data = train)
+biggest <- formula (lmfit)
+fwd.stepfit <- step(min.lm, direction = 'forward', scope = biggest)
+print(summary(fwd.stepfit))
+back.stepfit <- step(min.lm, direction = 'backward', scope = biggest)
+print(summary(back.stepfit))
+
+# make predictions
+predictions <- predict(back.stepfit, test)
+# summarize accuracy
+mse <- mean((test$accidents - predictions)^2)
+RMSE <- sqrt(mse)
+print(RMSE)
+R2 <- 1 - (sum((test$accidents-predictions )^2)/sum((test$accidents-mean(test$accidents))^2))
+print(R2)
+
+# lasso, ridge, and elastic net regression
+x <- as.matrix(train[1:9]) # feature matrix
+y <- as.double(as.matrix(train[, 10])) # Only class
+fit.lasso <- glmnet(x, y, family="gaussian", alpha=1)
+fit.ridge <- glmnet(x, y, family="gaussian", alpha=0)
+fit.elnet <- glmnet(x, y, family="gaussian", alpha=.5)
+
+lambdas <- 10^seq(3, -2, by = -.1)
+cv_fit <- cv.glmnet(x, y, alpha = 0, lambda = lambdas)
+
+# make predictions
+predictions <- predict(fit.elnet, test)
+# summarize accuracy
+mse <- mean((test$accidents - predictions)^2)
+RMSE <- sqrt(mse)
+print(RMSE)
+R2 <- 1 - (sum((test$accidents-predictions )^2)/sum((test$accidents-mean(test$accidents))^2))
+print(R2)
 
 # random forest
 
