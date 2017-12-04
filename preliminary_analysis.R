@@ -46,14 +46,14 @@ crash.data <-
          includes.oneway = OneWay_max,
          lat = Latitude,
          lng = Longitude) %>%
-  select(one_of(independent.vars, dependent.var)) %>%
+  dplyr::select(one_of(independent.vars, dependent.var)) %>%
   na.omit()
 
 print(table(crash.data$accidents))
 
 # print the percentage of zero-accident intersections
 print(nrow(crash.data[crash.data$accidents %in% 0,])/nrow(crash.data))
-backup.data <- crash.data %>% select_all()
+backup.data <- crash.data %>% dplyr::select_all()
 
 
 # =============== Classification ========================
@@ -61,7 +61,7 @@ backup.data <- crash.data %>% select_all()
 crash.data.with.class <-
   crash.data %>%
   mutate(accidents_class = cut(accidents, c(-Inf, 0, Inf), labels = c('0', '>0'))) %>%
-  select(-accidents)
+  dplyr::select(-accidents)
 
 print(table(crash.data.with.class$accidents_class))
 
@@ -73,7 +73,7 @@ set.seed(9560)
 # crash.data.down.sampled <- downSample(x = crash.data.with.class[, -ncol(crash.data)],
 #                                       y = crash.data.with.class$accidents_class)
 crash.data.down.sampled <-
-  downSample(x = crash.data.with.class %>% select(one_of(independent.vars)),
+  downSample(x = crash.data.with.class %>% dplyr::select(one_of(independent.vars)),
              y = crash.data.with.class$accidents_class)
 
 table(crash.data.down.sampled$Class)
@@ -187,6 +187,16 @@ print(output.forest)
 # =============== Regression ========================
 # remove zero-accident intersections
 crash.data.for.regression <- subset(backup.data, accidents != 0)
+
+#crash.data.for.regression <- subset(crash.data.for.regression, accidents < 8)
+
+# re-assign values to accidents
+crash.data.for.regression$accidents[crash.data.for.regression$accidents == 1 | crash.data.for.regression$accidents == 2] <- 1
+crash.data.for.regression$accidents[crash.data.for.regression$accidents == 3 | crash.data.for.regression$accidents == 4] <- 2
+crash.data.for.regression$accidents[crash.data.for.regression$accidents == 5 | crash.data.for.regression$accidents == 6] <- 3
+crash.data.for.regression$accidents[crash.data.for.regression$accidents > 6] <- 4
+
+print(table(crash.data.for.regression$accidents))
 
 # what if we take out the intersections with more than 5 accidents?
 #crash.data.for.regression <- subset(crash.data.for.regression, accidents < 7)
