@@ -10,6 +10,7 @@ library(party)
 library(randomForest)
 library(MASS)
 library(glmnet)
+library(rpart)
 
 # required package for svm: install.packages('caret', dependencies = TRUE)
 
@@ -187,6 +188,9 @@ print(output.forest)
 # remove zero-accident intersections
 crash.data.for.regression <- subset(backup.data, accidents != 0)
 
+# what if we take out the intersections with more than 5 accidents?
+#crash.data.for.regression <- subset(crash.data.for.regression, accidents < 7)
+
 # training & testing
 ## 80% of the sample size
 smp_size <- floor(0.8 * nrow(crash.data.for.regression))
@@ -197,6 +201,9 @@ train_ind <- sample(seq_len(nrow(crash.data.for.regression)), size = smp_size)
 
 train <- crash.data.for.regression[train_ind, ]
 test <- crash.data.for.regression[-train_ind, ]
+
+# const denominator
+dem <- sum((test$accidents-mean(test$accidents))^2)
 
 # GLM
 glmfit <- glm(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
@@ -216,7 +223,8 @@ predictions <- predict(lmfit, test)
 mse <- mean((test$accidents - predictions)^2)
 RMSE <- sqrt(mse)
 print(RMSE)
-print(summary(lmfit)$r.squared)
+R2 <- 1 - (sum((test$accidents-predictions )^2)/dem)
+print(R2)
 
 # Stepwise regression (usually deal with multiple IVs)
 # perform step-wise feature selection
@@ -229,23 +237,46 @@ back.stepfit <- step(min.lm, direction = 'backward', scope = biggest)
 print(summary(back.stepfit))
 
 # make predictions
-predictions <- predict(back.stepfit, test)
+predictions <- predict(fwd.stepfit, test)
 # summarize accuracy
 mse <- mean((test$accidents - predictions)^2)
 RMSE <- sqrt(mse)
 print(RMSE)
-R2 <- 1 - (sum((test$accidents-predictions )^2)/sum((test$accidents-mean(test$accidents))^2))
+R2 <- 1 - (sum((test$accidents-predictions )^2)/dem)
 print(R2)
 
 # lasso, ridge, and elastic net regression
 x <- as.matrix(train[1:9]) # feature matrix
 y <- as.double(as.matrix(train[, 10])) # Only class
+
+x.test <- as.matrix(test[1:9]) # feature matrix
+y.test <- as.double(as.matrix(test[, 10])) # Only class
+
 fit.lasso <- glmnet(x, y, family="gaussian", alpha=1)
 fit.ridge <- glmnet(x, y, family="gaussian", alpha=0)
 fit.elnet <- glmnet(x, y, family="gaussian", alpha=.5)
 
-lambdas <- 10^seq(3, -2, by = -.1)
-cv_fit <- cv.glmnet(x, y, alpha = 0, lambda = lambdas)
+# lambdas <- 10^seq(3, -2, by = -.1)
+# cv_fit <- cv.glmnet(x, y, alpha = 0, lambda = lambdas)
+
+# 10-fold Cross validation for each alpha = 0, 0.2, ... , 0.8, 1.0
+# (For plots on Right)
+for (i in 0:10) {
+  assign(paste("fit", i, sep=""), cv.glmnet(x, y, type.measure="mse",
+                                            alpha=i/10,family="gaussian"))
+}
+
+# Plot solution paths:
+par(mfrow=c(3,2))
+# For plotting options, type '?plot.glmnet' in R console
+plot(fit.lasso, xvar="lambda")
+plot(fit10, main="LASSO")
+
+plot(fit.ridge, xvar="lambda")
+plot(fit0, main="Ridge")
+
+plot(fit.elnet, xvar="lambda")
+plot(fit5, main="Elastic Net")
 
 # make predictions
 predictions <- predict(fit.elnet, test)
@@ -253,11 +284,30 @@ predictions <- predict(fit.elnet, test)
 mse <- mean((test$accidents - predictions)^2)
 RMSE <- sqrt(mse)
 print(RMSE)
-R2 <- 1 - (sum((test$accidents-predictions )^2)/sum((test$accidents-mean(test$accidents))^2))
+R2 <- 1 - (sum((test$accidents-predictions )^2)/dem)
 print(R2)
 
-# random forest
+# plot linear relationship
+treefit <-pairs(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
+                data = train)
 
+# Regression Tree
+treefit <-rpart(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
+      data = train)
+
+summary(treefit)
+printcp(treefit)
+plotcp(treefit)
+
+# make prediction
+predictions <- predict(treefit, test)
+mse <- mean((test$accidents - predictions)^2)
+RMSE <- sqrt(mse)
+R2 <- 1 - (sum((test$accidents-predictions )^2)/dem)
+print(R2)
+
+
+# random forest
 output.forest <- randomForest(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
                               data = crash.data.for.regression, importance = T, proximity = T, ntree = 500, mtry = 2, do.trace = 100)
 
