@@ -126,8 +126,8 @@ xgb.crash.model <- xgboost(data = training.sparse,
                            verbose = 0)
 
 # Visualize which factors are most important.
-impt <- xgb.importance(feature_names = colnames(training.sparse), model = xgb.crash.model )
-xgb.plot.importance(importance_matrix = impt)
+xgb.impt <- xgb.importance(feature_names = colnames(training.sparse), model = xgb.crash.model)
+xgb.plot.importance(importance_matrix = xgb.impt)
 
 # Predict on test dataset.
 predicty <- predict(xgb.crash.model, testing.sparse)
@@ -137,7 +137,7 @@ predicty <- predict(xgb.crash.model, testing.sparse)
 # Get accuracy of prediction.
 print(confusionMatrix(data = factor(predicty > 0.5, levels = c(FALSE, TRUE), labels = c('0', '>0')),
                       reference = testing$Class, positive = '>0'))
-print(confusionMatrix(data = factor(predicty > 0.95, levels = c(FALSE, TRUE), labels = c('0', '>0')),
+print(confusionMatrix(data = factor(predicty > 0.5, levels = c(FALSE, TRUE), labels = c('0', '>0')),
                       reference = testing$Class, mode = "prec_recall", positive = '>0'))
 
 # Look at how choosing a cutoff changes precision, recall, and overall accuracy
