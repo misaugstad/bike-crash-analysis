@@ -244,13 +244,14 @@ print(odds.ratio.df, row.names = FALSE, right = FALSE)
 
 # =============== Regression ========================
 # remove zero-accident intersections
-crash.data.for.regression <-
-  subset(backup.data, accidents != 0) %>%
-  mutate(accidents = case_when(accidents %in% c(1, 2) ~ 1,
-                               accidents %in% c(3, 4) ~ 2,
-                               accidents %in% c(5, 6) ~ 3,
-                               TRUE ~ 4))
+# crash.data.for.regression <-
+#   subset(backup.data, accidents != 0) %>%
+#   mutate(accidents = case_when(accidents %in% c(1, 2) ~ 1,
+#                                accidents %in% c(3, 4) ~ 2,
+#                                accidents %in% c(5, 6) ~ 3,
+#                                TRUE ~ 4))
 
+crash.data.for.regression <- subset(backup.data, accidents > 0)
 print(table(crash.data.for.regression$accidents))
 
 # what if we take out the intersections with more than 5 accidents?
@@ -380,16 +381,34 @@ R2 <- 1 - (sum((test$accidents - predictions )^2)/dem)
 print(R2)
 
 
+# decision tree
+ctreefit <- ctree(accidents ~., data=train)
+# make prediction
+predictions <- predict(ctreefit, test)
+mse <- mean((test$accidents - predictions)^2)
+RMSE <- sqrt(mse)
+R2 <- 1 - (sum((test$accidents - predictions )^2)/dem)
+print(R2)
+
+
 # random forest
 output.forest <-
   randomForest(accidents ~ census.block.population + census.block.num.housing.units +
                  census.block.household.income + dist.to.bike.parking + road.width.max +
                  pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
-               data = crash.data.for.regression, importance = T, proximity = T, ntree = 500,
+               data = train, importance = T, proximity = T, ntree = 500,
                mtry = 2, do.trace = 100)
 
 
-plot(predictRF)
+# make prediction
+predictions <- predict(output.forest, test)
+mse <- mean((test$accidents - predictions)^2)
+RMSE <- sqrt(mse)
+R2 <- 1 - (sum((test$accidents - predictions )^2)/dem)
+print(R2)
+
+
+#plot(predictRF)
 plot(output.forest, log = "y")
 varImpPlot(output.forest)
 print(output.forest)
