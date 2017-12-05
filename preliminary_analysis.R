@@ -189,6 +189,42 @@ varImpPlot(output.forest)
 print(output.forest)
 
 
+# =============== Ordinal Regression ================
+
+crash.data.ord <-
+  crash.data %>%
+  mutate(accidents.class = cut(accidents, c(-Inf, 2, 5, Inf),
+                               labels = c('0-2', '3-5', '6+'),
+                               ordered_result = TRUE)) %>%
+  dplyr::select(-accidents)
+
+print(table(crash.data.ord$accidents.class))
+
+# sampling
+set.seed(9560)
+
+crash.data.down.ord.sampled <-
+  downSample(x = crash.data.ord %>% dplyr::select(one_of(independent.vars)),
+             y = crash.data.ord$accidents.class)
+
+table(crash.data.down.ord.sampled$Class)
+
+# construct training and testing dataset
+intrain.ord <- createDataPartition(y = crash.data.down.ord.sampled$Class, p = 0.8, list = FALSE)
+training.ord <- crash.data.down.ord.sampled[intrain.ord,]
+testing.ord <- crash.data.down.ord.sampled[-intrain.ord,]
+print(nrow(training.ord) + nrow(testing.ord))
+
+ord.reg <- polr(Class ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
+                data = training.ord, Hess = TRUE, method = 'logistic')
+summary(ord.reg)
+
+# prediction time!
+prediction.ord <- predict(ord.reg, testing.ord)
+summary(prediction.ord)
+print(confusionMatrix(data = prediction.ord,
+                      reference = testing.ord$Class, mode = "prec_recall"))
+
 # =============== Regression ========================
 # remove zero-accident intersections
 crash.data.for.regression <- subset(backup.data, accidents != 0)
