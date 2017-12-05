@@ -92,7 +92,7 @@ trctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 3)
 
 # run SVM
 svmfit <- train(Class ~., data = training,
-                method = "svmRadial",
+                method = "svmLinear",
                 trControl = trctrl,
                 preProcess = c("center", "scale"),
                 tuneLength = 5,
