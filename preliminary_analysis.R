@@ -193,6 +193,7 @@ print(output.forest)
 
 
 # =============== Ordinal Regression ================
+# A good reference: https://stats.idre.ucla.edu/r/dae/ordinal-logistic-regression/
 
 crash.data.ord <-
   crash.data %>%
