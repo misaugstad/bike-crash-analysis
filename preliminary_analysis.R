@@ -60,21 +60,21 @@ backup.data <- crash.data %>% dplyr::select_all()
 # classify zero- and non-zero-accidents interactions
 crash.data.with.class <-
   crash.data %>%
-  mutate(accidents_class = cut(accidents, c(-Inf, 0, Inf), labels = c('0', '>0'))) %>%
+  mutate(accidents.class = cut(accidents, c(-Inf, 0, Inf), labels = c('0', '>0'))) %>%
   dplyr::select(-accidents)
 
-print(table(crash.data.with.class$accidents_class))
+print(table(crash.data.with.class$accidents.class))
 
 # sampling
 set.seed(9560)
-# crash.data <- downSample(x = crash.data[, -ncol(crash.data)], y = crash.data$accidents_class)
+# crash.data <- downSample(x = crash.data[, -ncol(crash.data)], y = crash.data$accidents.class)
 # crash.data <- as.data.frame(crash.data)
 # colnames(crash.data)  <-c("Zero","Nonzero")
 # crash.data.down.sampled <- downSample(x = crash.data.with.class[, -ncol(crash.data)],
-#                                       y = crash.data.with.class$accidents_class)
+#                                       y = crash.data.with.class$accidents.class)
 crash.data.down.sampled <-
   downSample(x = crash.data.with.class %>% dplyr::select(one_of(independent.vars)),
-             y = crash.data.with.class$accidents_class)
+             y = crash.data.with.class$accidents.class)
 
 table(crash.data.down.sampled$Class)
 
@@ -176,7 +176,7 @@ confusionMatrix(data = predictRF,
 
 
 #confusionMatrix(data=predictRF,
-#                reference=crash.data$accidents_class,
+#                reference=crash.data$accidents.class,
 #                positive='>0')
 
 # plot how the error changes
