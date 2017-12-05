@@ -197,8 +197,8 @@ print(output.forest)
 
 crash.data.ord <-
   crash.data %>%
-  mutate(accidents.class = cut(accidents, c(-Inf, 2, 5, Inf),
-                               labels = c('0-2', '3-5', '6+'),
+  mutate(accidents.class = cut(accidents, c(-Inf, 1, 3, Inf),
+                               labels = c('0-1', '2-3', '4+'),
                                ordered_result = TRUE)) %>%
   dplyr::select(-accidents)
 
@@ -211,13 +211,10 @@ crash.data.down.ord.sampled <-
   downSample(x = crash.data.ord %>% dplyr::select(one_of(independent.vars)),
              y = crash.data.ord$accidents.class)
 
-table(crash.data.down.ord.sampled$Class)
-
 # construct training and testing dataset
 intrain.ord <- createDataPartition(y = crash.data.down.ord.sampled$Class, p = 0.8, list = FALSE)
 training.ord <- crash.data.down.ord.sampled[intrain.ord,]
 testing.ord <- crash.data.down.ord.sampled[-intrain.ord,]
-print(nrow(training.ord) + nrow(testing.ord))
 
 ord.reg <- polr(Class ~ census.block.population + census.block.num.housing.units +
                   census.block.household.income + dist.to.bike.parking + road.width.max +
@@ -228,8 +225,22 @@ summary(ord.reg)
 # prediction time!
 prediction.ord <- predict(ord.reg, testing.ord)
 summary(prediction.ord)
-print(confusionMatrix(data = prediction.ord,
-                      reference = testing.ord$Class, mode = "prec_recall"))
+# print(confusionMatrix(data = prediction.ord,
+#                       reference = testing.ord$Class, mode = "prec_recall"))
+
+ord.accuracy.df <- as.data.frame(confusionMatrix(data = prediction.ord,
+                reference = testing.ord$Class,
+                mode = "prec_recall")$byClass) %>%
+  dplyr::select(one_of('Balanced Accuracy', 'Precision', 'Recall', 'F1'))
+print(ord.accuracy.df, right = FALSE)
+
+odds.ratio <- (exp(coef(ord.reg)))
+odds.ratio.df <-
+  data.frame(predictor = names(odds.ratio),
+             odds.ratio = as.numeric(odds.ratio)) %>%
+  arrange(desc(odds.ratio))
+
+print(odds.ratio.df, row.names = FALSE, right = FALSE)
 
 # =============== Regression ========================
 # remove zero-accident intersections
