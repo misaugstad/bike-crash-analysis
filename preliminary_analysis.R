@@ -91,7 +91,8 @@ print(nrow(training) + nrow(testing))
 trctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 3)
 
 # run SVM
-svmfit <- train(Class ~., data = training, method = "svmLinear",
+svmfit <- train(Class ~., data = training,
+                method = "svmRadial",
                 trControl = trctrl,
                 preProcess = c("center", "scale"),
                 tuneLength = 5,
@@ -102,10 +103,14 @@ test_pred <- predict(svmfit, testing)
 
 plot(test_pred)
 
+
 #testing <- transform(testing,pred_acc = test_pred)
 print(confusionMatrix(data = test_pred, reference = testing$Class))
 print(confusionMatrix(data = test_pred, reference = testing$Class, mode = "prec_recall"))
 
+# Feature Weights
+gbmImp <- varImp(svmfit, scale = FALSE)
+print(gbmImp)
 
 # XGBOOST!
 training.sparse <- sparse.model.matrix(Class ~ .-1, data = training)
