@@ -160,8 +160,11 @@ ggplot(data = xgb.accuracies.melt, mapping = aes(x = cutoff, y = accuracy)) +
 # random forest
 
 # build forest
-output.forest <- randomForest(Class ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
-                              data = training, importance = T, proximity = T, ntree = 300, mtry = 2, do.trace = 100)
+output.forest <-
+  randomForest(Class ~ census.block.population + census.block.num.housing.units +
+                 census.block.household.income + dist.to.bike.parking + road.width.max +
+                 pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
+               data = training, importance = T, proximity = T, ntree = 300, mtry = 2, do.trace = 100)
 
 # running test data
 predictRF <- predict(output.forest, testing)
@@ -215,7 +218,9 @@ training.ord <- crash.data.down.ord.sampled[intrain.ord,]
 testing.ord <- crash.data.down.ord.sampled[-intrain.ord,]
 print(nrow(training.ord) + nrow(testing.ord))
 
-ord.reg <- polr(Class ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
+ord.reg <- polr(Class ~ census.block.population + census.block.num.housing.units +
+                  census.block.household.income + dist.to.bike.parking + road.width.max +
+                  pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
                 data = training.ord, Hess = TRUE, method = 'logistic')
 summary(ord.reg)
 
@@ -227,15 +232,12 @@ print(confusionMatrix(data = prediction.ord,
 
 # =============== Regression ========================
 # remove zero-accident intersections
-crash.data.for.regression <- subset(backup.data, accidents != 0)
-
-#crash.data.for.regression <- subset(crash.data.for.regression, accidents < 8)
-
-# re-assign values to accidents
-crash.data.for.regression$accidents[crash.data.for.regression$accidents == 1 | crash.data.for.regression$accidents == 2] <- 1
-crash.data.for.regression$accidents[crash.data.for.regression$accidents == 3 | crash.data.for.regression$accidents == 4] <- 2
-crash.data.for.regression$accidents[crash.data.for.regression$accidents == 5 | crash.data.for.regression$accidents == 6] <- 3
-crash.data.for.regression$accidents[crash.data.for.regression$accidents > 6] <- 4
+crash.data.for.regression <-
+  subset(backup.data, accidents != 0) %>%
+  mutate(accidents = case_when(accidents %in% c(1, 2) ~ 1,
+                               accidents %in% c(3, 4) ~ 2,
+                               accidents %in% c(5, 6) ~ 3,
+                               TRUE ~ 4))
 
 print(table(crash.data.for.regression$accidents))
 
@@ -254,17 +256,21 @@ train <- crash.data.for.regression[train_ind, ]
 test <- crash.data.for.regression[-train_ind, ]
 
 # const denominator
-dem <- sum((test$accidents-mean(test$accidents))^2)
+dem <- sum((test$accidents - mean(test$accidents))^2)
 
 # GLM
-glmfit <- glm(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
+glmfit <- glm(accidents ~ census.block.population + census.block.num.housing.units +
+                census.block.household.income + dist.to.bike.parking + road.width.max +
+                pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
               data = crash.data.for.regression,
               family = gaussian())
 
 print(summary(glmfit))
 
 # Multiple Linear Regression
-lmfit <- lm(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
+lmfit <- lm(accidents ~ census.block.population + census.block.num.housing.units +
+              census.block.household.income + dist.to.bike.parking + road.width.max +
+              pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
             data = train)
 print(summary(lmfit))
 
@@ -274,14 +280,14 @@ predictions <- predict(lmfit, test)
 mse <- mean((test$accidents - predictions)^2)
 RMSE <- sqrt(mse)
 print(RMSE)
-R2 <- 1 - (sum((test$accidents-predictions )^2)/dem)
+R2 <- 1 - (sum((test$accidents - predictions )^2)/dem)
 print(R2)
 
 # Stepwise regression (usually deal with multiple IVs)
 # perform step-wise feature selection
 min.lm <- lm(accidents ~ 1,
              data = train)
-biggest <- formula (lmfit)
+biggest <- formula(lmfit)
 fwd.stepfit <- step(min.lm, direction = 'forward', scope = biggest)
 print(summary(fwd.stepfit))
 back.stepfit <- step(min.lm, direction = 'backward', scope = biggest)
@@ -293,7 +299,7 @@ predictions <- predict(fwd.stepfit, test)
 mse <- mean((test$accidents - predictions)^2)
 RMSE <- sqrt(mse)
 print(RMSE)
-R2 <- 1 - (sum((test$accidents-predictions )^2)/dem)
+R2 <- 1 - (sum((test$accidents - predictions )^2)/dem)
 print(R2)
 
 # lasso, ridge, and elastic net regression
@@ -303,9 +309,9 @@ y <- as.double(as.matrix(train[, 10])) # Only class
 x.test <- as.matrix(test[1:9]) # feature matrix
 y.test <- as.double(as.matrix(test[, 10])) # Only class
 
-fit.lasso <- glmnet(x, y, family="gaussian", alpha=1)
-fit.ridge <- glmnet(x, y, family="gaussian", alpha=0)
-fit.elnet <- glmnet(x, y, family="gaussian", alpha=.5)
+fit.lasso <- glmnet(x, y, family = "gaussian", alpha=1)
+fit.ridge <- glmnet(x, y, family = "gaussian", alpha=0)
+fit.elnet <- glmnet(x, y, family = "gaussian", alpha=.5)
 
 # lambdas <- 10^seq(3, -2, by = -.1)
 # cv_fit <- cv.glmnet(x, y, alpha = 0, lambda = lambdas)
@@ -313,21 +319,21 @@ fit.elnet <- glmnet(x, y, family="gaussian", alpha=.5)
 # 10-fold Cross validation for each alpha = 0, 0.2, ... , 0.8, 1.0
 # (For plots on Right)
 for (i in 0:10) {
-  assign(paste("fit", i, sep=""), cv.glmnet(x, y, type.measure="mse",
-                                            alpha=i/10,family="gaussian"))
+  assign(paste("fit", i, sep=""), cv.glmnet(x, y, type.measure = "mse",
+                                            alpha = i/10,family = "gaussian"))
 }
 
 # Plot solution paths:
-par(mfrow=c(3,2))
+par(mfrow = c(3,2))
 # For plotting options, type '?plot.glmnet' in R console
-plot(fit.lasso, xvar="lambda")
-plot(fit10, main="LASSO")
+plot(fit.lasso, xvar = "lambda")
+plot(fit10, main = "LASSO")
 
-plot(fit.ridge, xvar="lambda")
-plot(fit0, main="Ridge")
+plot(fit.ridge, xvar = "lambda")
+plot(fit0, main = "Ridge")
 
-plot(fit.elnet, xvar="lambda")
-plot(fit5, main="Elastic Net")
+plot(fit.elnet, xvar = "lambda")
+plot(fit5, main = "Elastic Net")
 
 # make predictions
 predictions <- predict(fit.elnet, test)
@@ -335,15 +341,19 @@ predictions <- predict(fit.elnet, test)
 mse <- mean((test$accidents - predictions)^2)
 RMSE <- sqrt(mse)
 print(RMSE)
-R2 <- 1 - (sum((test$accidents-predictions )^2)/dem)
+R2 <- 1 - (sum((test$accidents - predictions )^2)/dem)
 print(R2)
 
 # plot linear relationship
-treefit <-pairs(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
+treefit <- pairs(accidents ~ census.block.population + census.block.num.housing.units +
+                   census.block.household.income + dist.to.bike.parking + road.width.max +
+                   pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
                 data = train)
 
 # Regression Tree
-treefit <-rpart(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
+treefit <- rpart(accidents ~ census.block.population + census.block.num.housing.units +
+                  census.block.household.income + dist.to.bike.parking + road.width.max +
+                  pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
       data = train)
 
 summary(treefit)
@@ -354,13 +364,17 @@ plotcp(treefit)
 predictions <- predict(treefit, test)
 mse <- mean((test$accidents - predictions)^2)
 RMSE <- sqrt(mse)
-R2 <- 1 - (sum((test$accidents-predictions )^2)/dem)
+R2 <- 1 - (sum((test$accidents - predictions )^2)/dem)
 print(R2)
 
 
 # random forest
-output.forest <- randomForest(accidents ~ census.block.population + census.block.num.housing.units + census.block.household.income + dist.to.bike.parking + road.width.max + pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
-                              data = crash.data.for.regression, importance = T, proximity = T, ntree = 500, mtry = 2, do.trace = 100)
+output.forest <-
+  randomForest(accidents ~ census.block.population + census.block.num.housing.units +
+                 census.block.household.income + dist.to.bike.parking + road.width.max +
+                 pavement.rating.min + speed.limit.max + ACC_max + includes.oneway,
+               data = crash.data.for.regression, importance = T, proximity = T, ntree = 500,
+               mtry = 2, do.trace = 100)
 
 
 plot(predictRF)
